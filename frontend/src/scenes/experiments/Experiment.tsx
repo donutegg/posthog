@@ -1020,7 +1020,6 @@ export function Experiment(): JSX.Element {
                                         kind: NodeKind.InsightVizNode,
                                         source: filtersToQueryNode(transformResultFilters(experimentResults.filters)),
                                         showTable: true,
-                                        showLegendButton: false,
                                         showLastComputation: true,
                                         showLastComputationRefresh: false,
                                     }}
