@@ -347,7 +347,7 @@ def create_batch_export(
     start_at: dt.datetime | None = None,
     end_at: dt.datetime | None = None,
     trigger_immediately: bool = False,
-):
+) -> BatchExport:
     """Create a BatchExport and its underlying Temporal Schedule.
 
     Args:
