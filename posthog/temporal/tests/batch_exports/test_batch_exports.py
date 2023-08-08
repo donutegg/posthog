@@ -247,3 +247,92 @@ async def test_get_results_iterator_handles_duplicates(client):
         for key, value in result.items():
             # Some keys will be missing from result, so let's only check the ones we have.
             assert value == expected[key], f"{key} value in {result} didn't match value in {expected}"
+
+
+TEST_ELEMENTS_CHAIN = """div:attr__id="gatsby-focus-wrapper"attr__style="outline:none"attr__tabindex="-1"attr_id="gatsby-focus-wrapper"nth-child="1"nth-of-type="1";div:attr__id="___gatsby"attr_id="___gatsby"nth-child="3"nth-of-type="1";body.dark:attr__class="dark"nth-child="2"nth-of-type="1"
+"""
+
+
+@pytest.mark.django_db
+@pytest.mark.asyncio
+async def test_get_results_iterator_with_legacy_schema(client):
+    """Test the rows returned by get_results_iterator with legacy schema."""
+    team_id = randint(1, 1000000)
+
+    events: list[EventValues] = [
+        {
+            "uuid": str(uuid4()),
+            "event": f"test-{i}",
+            "_timestamp": "2023-04-20 14:30:00",
+            "timestamp": f"2023-04-20 14:30:00.{i:06d}",
+            "inserted_at": f"2023-04-20 14:30:00.{i:06d}",
+            "created_at": "2023-04-20 14:30:00.000000",
+            "distinct_id": str(uuid4()),
+            "person_id": str(uuid4()),
+            "person_properties": {"$browser": "Chrome", "$os": "Mac OS X"},
+            "team_id": team_id,
+            "properties": {
+                "$browser": "Chrome",
+                "$os": "Mac OS X",
+                "$ip": "127.0.0.1",
+                "$set": {"property": "value"},
+                "$set_once": {"$initial_os": "Mac OS X", "$initial_browser": "Chrome"},
+                "$current_url": "https://app.posthog.com",
+            },
+            "elements_chain": TEST_ELEMENTS_CHAIN,
+            # These won't be inserted but it's used to check results.
+            "elements": [
+                {
+                    "attr_id": "gatsby-focus-wrapper",
+                    "nth_child": 1,
+                    "nth_of_type": 1,
+                    "tag_name": "div",
+                    "order": 0,
+                    "attributes": {
+                        "attr__id": "gatsby-focus-wrapper",
+                        "attr__style": "outline:none",
+                        "attr__tabindex": "-1",
+                    },
+                },
+                {
+                    "attr_id": "___gatsby",
+                    "attributes": {"attr__id": "___gatsby"},
+                    "nth_child": 3,
+                    "nth_of_type": 1,
+                    "tag_name": "div",
+                    "order": 1,
+                },
+                {
+                    "attr_class": ["dark"],
+                    "attributes": {"attr__class": "dark"},
+                    "nth_child": 2,
+                    "nth_of_type": 1,
+                    "tag_name": "body",
+                    "order": 2,
+                },
+            ],
+            "person_set": {"property": "value"},
+            "person_set_once": {"$initial_os": "Mac OS X", "$initial_browser": "Chrome"},
+            "ip": "127.0.0.1",
+            "site_url": "https://app.posthog.com",
+        }
+        for i in range(10000)
+    ]
+
+    await insert_events(
+        ch_client=client,
+        events=events,
+    )
+
+    iter_ = get_results_iterator(client, team_id, "2023-04-20 14:30:00", "2023-04-20 14:31:00", legacy=True)
+    rows = [row for row in iter_]
+
+    all_expected = sorted(events, key=operator.itemgetter("event"))
+    all_result = sorted(rows, key=operator.itemgetter("event"))
+
+    assert len(all_expected) == len(all_result)
+
+    for expected, result in zip(all_expected, all_result):
+        for key, value in result.items():
+            # Some keys will be missing from result, so let's only check the ones we have.
+            assert value == expected[key], f"{key} value {result[key]} didn't match value {expected[key]}"
