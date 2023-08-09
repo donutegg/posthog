@@ -13,8 +13,8 @@ SELECT_QUERY_TEMPLATE = Template(
         -- These 'timestamp' checks are a heuristic to exploit the sort key.
         -- Ideally, we need a schema that serves our needs, i.e. with a sort key on the _timestamp field used for batch exports.
         -- As a side-effect, this heuristic will discard historical loads older than 2 days.
-        timestamp >= toDateTime64({data_interval_start}, 6, 'UTC') - INTERVAL 2 DAY
-        AND timestamp < toDateTime64({data_interval_start}, 6, 'UTC') + INTERVAL 1 DAY
+        timestamp >= toDateTime({data_interval_start}, 'UTC') - INTERVAL 2 DAY
+        AND timestamp < toDateTime({data_interval_end}, 'UTC') + INTERVAL 1 DAY
         AND COALESCE(inserted_at, _timestamp) >= toDateTime64({data_interval_start}, 6, 'UTC')
         AND COALESCE(inserted_at, _timestamp) < toDateTime64({data_interval_end}, 6, 'UTC')
         AND team_id = {team_id}
@@ -26,8 +26,8 @@ SELECT_QUERY_TEMPLATE = Template(
 
 async def get_rows_count(client, team_id: int, interval_start: str, interval_end: str) -> int:
     """Return the count of rows within interval bounds for a given team_id."""
-    data_interval_start_ch = datetime.fromisoformat(interval_start).strftime("%Y-%m-%d %H:%M:%S.%f")
-    data_interval_end_ch = datetime.fromisoformat(interval_end).strftime("%Y-%m-%d %H:%M:%S.%f")
+    data_interval_start_ch = datetime.fromisoformat(interval_start).strftime("%Y-%m-%d %H:%M:%S")
+    data_interval_end_ch = datetime.fromisoformat(interval_end).strftime("%Y-%m-%d %H:%M:%S")
     query = SELECT_QUERY_TEMPLATE.substitute(
         fields="count(DISTINCT event, cityHash64(distinct_id), cityHash64(uuid)) as count", order_by="", format=""
     )
@@ -75,8 +75,8 @@ def get_results_iterator(
         interval_end: An isoformatted datetime representing the upper bound of the batch export.
         legacy: Whether this batch export is using the legacy (export apps) schema.
     """
-    data_interval_start_ch = datetime.fromisoformat(interval_start).strftime("%Y-%m-%d %H:%M:%S.%f")
-    data_interval_end_ch = datetime.fromisoformat(interval_end).strftime("%Y-%m-%d %H:%M:%S.%f")
+    data_interval_start_ch = datetime.fromisoformat(interval_start).strftime("%Y-%m-%d %H:%M:%S")
+    data_interval_end_ch = datetime.fromisoformat(interval_end).strftime("%Y-%m-%d %H:%M:%S")
     query = SELECT_QUERY_TEMPLATE.substitute(
         fields=FIELDS,
         order_by="ORDER BY inserted_at",
