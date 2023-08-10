@@ -10,6 +10,7 @@ import {
 } from './PluginJobConfiguration'
 import { featureFlagLogic } from 'lib/logic/featureFlagLogic'
 import { FEATURE_FLAGS } from 'lib/constants'
+import { userLogic } from 'scenes/userLogic'
 
 interface PluginJobOptionsProps {
     pluginId: number
@@ -27,6 +28,7 @@ export function PluginJobOptions({
     onSubmit,
 }: PluginJobOptionsProps): JSX.Element {
     const { featureFlags } = useValues(featureFlagLogic)
+    const { user } = useValues(userLogic)
 
     const jobs = useMemo(() => {
         return (capabilities?.jobs || [])
@@ -57,7 +59,7 @@ export function PluginJobOptions({
 
             {jobs.map((jobName) => (
                 <div key={jobName}>
-                    {jobName.includes('Export historical events') ? (
+                    {jobName.includes('Export historical events') && !user?.is_impersonated ? (
                         <i>
                             Currently unavailable, see{' '}
                             <Link to="https://github.com/PostHog/posthog/issues/15997">GitHub issue</Link>
